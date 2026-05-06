@@ -324,6 +324,124 @@ body{
   .hero-actions{justify-content:center}
   .section{padding:1.15rem}
 }
+
+/* ── AI CHAT STYLES ── */
+#ai-chat-box{
+  height:420px;overflow-y:auto;display:flex;flex-direction:column;
+  gap:14px;padding:16px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:var(--border-radius-md);
+  margin-bottom:14px;
+  scroll-behavior:smooth;
+}
+#ai-chat-box::-webkit-scrollbar{width:4px}
+#ai-chat-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:4px}
+
+.ai-msg-wrap{display:flex;flex-direction:column;max-width:80%}
+.ai-msg-wrap.user{align-self:flex-end;align-items:flex-end}
+.ai-msg-wrap.bot{align-self:flex-start;align-items:flex-start}
+
+.ai-bubble{
+  padding:11px 15px;border-radius:18px;
+  font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;
+}
+.ai-msg-wrap.user .ai-bubble{
+  background:var(--green);color:#000;
+  border-bottom-right-radius:4px;font-weight:500;
+}
+.ai-msg-wrap.bot .ai-bubble{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.88);
+  border-bottom-left-radius:4px;
+  backdrop-filter:blur(10px);
+}
+.ai-bot-row{display:flex;align-items:flex-end;gap:8px}
+.ai-avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(29,158,117,0.4),rgba(29,158,117,0.8));
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0;margin-bottom:2px;
+  border:1px solid rgba(29,158,117,0.4);
+}
+.ai-msg-time{font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px;padding:0 4px}
+
+.ai-typing{
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);
+  border-radius:18px;border-bottom-left-radius:4px;
+  padding:13px 16px;display:flex;gap:5px;align-items:center;
+}
+.ai-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);animation:aiDotBounce 1.2s infinite;
+}
+.ai-dot:nth-child(2){animation-delay:.2s}
+.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes aiDotBounce{
+  0%,60%,100%{transform:translateY(0);opacity:.5}
+  30%{transform:translateY(-5px);opacity:1}
+}
+
+.ai-input-row{
+  display:flex;align-items:flex-end;gap:8px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:28px;padding:6px 6px 6px 16px;
+  transition:border-color 0.2s;
+}
+.ai-input-row:focus-within{border-color:var(--green)}
+#ai-input{
+  flex:1;border:none;background:none;
+  font-family:var(--font-sans);font-size:14px;
+  color:#ffffff;resize:none;outline:none;
+  max-height:100px;min-height:24px;line-height:1.5;padding:4px 0;
+}
+#ai-input::placeholder{color:rgba(255,255,255,0.3)}
+#ai-send{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:var(--green);color:#000;font-size:15px;
+  cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .18s;flex-shrink:0;font-weight:700;
+}
+#ai-send:hover{background:#17b87f;transform:scale(1.05)}
+
+.ai-quick-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.ai-chip{
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);
+  border-radius:50px;padding:6px 13px;font-size:12px;
+  color:rgba(255,255,255,0.7);cursor:pointer;transition:all .18s;
+}
+.ai-chip:hover{background:rgba(29,158,117,0.2);border-color:var(--green);color:#4ade80}
+
+.ai-src{font-size:10.5px;color:rgba(255,255,255,0.3);margin-top:5px;padding:0 4px}
+
+.ai-sos{
+  background:rgba(216,90,48,0.12);border:1px solid rgba(216,90,48,0.25);
+  border-radius:var(--border-radius-md);padding:14px 16px;margin-bottom:16px;
+}
+.ai-sos-title{font-size:13px;font-weight:600;color:#ff7a5c;margin-bottom:6px}
+.ai-sos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ai-derm-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;padding:10px 12px;font-size:12px;
+}
+.ai-derm-name{font-weight:600;color:#ffffff;margin-bottom:2px}
+.ai-derm-info{color:rgba(255,255,255,0.5);font-size:11px;margin-bottom:6px}
+.ai-derm-link{
+  display:inline-flex;align-items:center;gap:4px;
+  color:#4ade80;text-decoration:none;font-size:11px;
+  border:1px solid rgba(74,222,128,0.3);border-radius:5px;
+  padding:3px 8px;margin-right:4px;transition:background .15s;
+}
+.ai-derm-link:hover{background:rgba(74,222,128,0.1)}
+.ai-find-btn{
+  width:100%;background:var(--green);color:#000;border:none;
+  border-radius:10px;padding:10px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:var(--font-sans);margin-top:10px;
+  transition:background .2s;display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.ai-find-btn:hover{background:#17b87f}
   </style>
 </head>
 <body>
@@ -371,6 +489,7 @@ body{
   <div class="nav-tab" onclick="goTab('products')" id="tab-products">Products</div>
   <div class="nav-tab" onclick="goTab('tracker')" id="tab-tracker">Tracker</div>
   <div class="nav-tab active" onclick="goTab('guide')" id="tab-guide">Guide</div>
+  <div class="nav-tab" onclick="goTab('ai')" id="tab-ai" style="color:#4ade80">✦ Ask AI</div>
 </div>
 
 <!-- QUIZ SECTION -->
@@ -680,6 +799,48 @@ body{
 
 </div>
 
+<!-- ── AI CHAT SECTION ── -->
+<div class="section" id="section-ai">
+  <div class="section-header">
+    <div class="section-eyebrow" style="color:var(--green)">Powered by RAG + Ollama</div>
+    <div class="section-title">Ask GlowAI anything</div>
+    <div class="section-desc">Your local skincare AI — answers from your own knowledge base. Ask about routines, ingredients, concerns, or anything skincare.</div>
+  </div>
+  <div class="ai-sos">
+    <div class="ai-sos-title">🆘 Urgent skin concern? Find a dermatologist</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">Seek immediate care for: severe rash · hives · blistering · painful swelling</div>
+    <button class="ai-find-btn" onclick="aiFindNearby()">📍 Find Dermatologists Near Me</button>
+    <div class="ai-sos-grid">
+      <div class="ai-derm-card"><div class="ai-derm-name">AIIMS Bhubaneswar</div><div class="ai-derm-info">Sijua, Dumuduma · Govt.</div><a class="ai-derm-link" href="tel:06742476789">📞 Call</a><a class="ai-derm-link" href="https://aiimsbhubaneswar.nic.in" target="_blank">🔗 Site</a></div>
+      <div class="ai-derm-card"><div class="ai-derm-name">KIMS Hospital</div><div class="ai-derm-info">KIIT Road, Patia</div><a class="ai-derm-link" href="tel:06742725750">📞 Call</a><a class="ai-derm-link" href="https://kimshealth.org/bhubaneswar" target="_blank">🔗 Site</a></div>
+      <div class="ai-derm-card"><div class="ai-derm-name">SUM Hospital</div><div class="ai-derm-info">Kalinga Nagar</div><a class="ai-derm-link" href="tel:06742386789">📞 Call</a></div>
+      <div class="ai-derm-card"><div class="ai-derm-name">Online Consult</div><div class="ai-derm-info">Teleconsultation</div><a class="ai-derm-link" href="https://practo.com" target="_blank">Practo</a><a class="ai-derm-link" href="https://1mg.com/consult/dermatologist" target="_blank">1mg</a></div>
+    </div>
+  </div>
+  <div class="ai-quick-row">
+    <div class="ai-chip" onclick="aiQuick('What routine suits oily skin?')">Oily skin routine</div>
+    <div class="ai-chip" onclick="aiQuick('How to treat dark spots?')">Dark spots</div>
+    <div class="ai-chip" onclick="aiQuick('Best sunscreen for Indian skin?')">Best SPF</div>
+    <div class="ai-chip" onclick="aiQuick('How do I start using retinol?')">Retinol guide</div>
+    <div class="ai-chip" onclick="aiQuick('Which ingredients should not be mixed?')">Ingredient combos</div>
+    <div class="ai-chip" onclick="aiQuick('Best budget skincare brands in India?')">Budget picks</div>
+  </div>
+  <div id="ai-chat-box">
+    <div class="ai-msg-wrap bot">
+      <div class="ai-bot-row">
+        <div class="ai-avatar">🌿</div>
+        <div class="ai-bubble">Hi! I'm GlowAI 🌿 Ask me anything about skincare — routines, ingredients, concerns, or general tips. I'm powered by your local RAG knowledge base.</div>
+      </div>
+      <div class="ai-msg-time">Just now</div>
+    </div>
+  </div>
+  <div class="ai-input-row">
+    <textarea id="ai-input" rows="1" placeholder="Ask anything about skincare…" onkeydown="aiHandleKey(event)" oninput="aiAutoGrow(this)"></textarea>
+    <button id="ai-send" onclick="aiSend()" title="Send">➤</button>
+  </div>
+  <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.25);margin-top:8px">Make sure <code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px">python backend/app.py</code> is running · Not a substitute for medical advice</div>
+</div>
+
 <script>
 const quizData = {
   type: null,
@@ -956,6 +1117,128 @@ window.addEventListener('load', function(){
   updateStreak();
   resetQuizData();
 });
+
+/* ── AI CHAT JAVASCRIPT ── */
+var aiTypingCounter = 0;
+
+function aiAutoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function aiHandleKey(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); aiSend(); }
+}
+
+function aiQuick(text){
+  document.getElementById('ai-input').value = text;
+  aiSend();
+}
+
+function aiFindNearby(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      function(pos){ window.open('https://www.google.com/maps/search/dermatologist/@' + pos.coords.latitude + ',' + pos.coords.longitude + ',14z','_blank'); },
+      function(){ window.open('https://www.google.com/maps/search/dermatologist+near+me','_blank'); }
+    );
+  } else {
+    window.open('https://www.google.com/maps/search/dermatologist+near+me','_blank');
+  }
+}
+
+async function aiSend(){
+  var input = document.getElementById('ai-input');
+  var question = input.value.trim();
+  if(!question) return;
+
+  // Add user bubble
+  aiAddBubble(question, 'user');
+  input.value = '';
+  aiAutoGrow(input);
+
+  // Show typing
+  var typingId = aiShowTyping();
+
+  try {
+    var res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question })
+    });
+    var data = await res.json();
+    aiRemoveTyping(typingId);
+    aiAddBubble(data.answer, 'bot', data.sources, data.time);
+  } catch(e) {
+    aiRemoveTyping(typingId);
+    aiAddBubble('⚠️ Could not reach GlowAI backend.\n\nMake sure you have:\n1. Ollama running (ollama serve)\n2. Flask running (python backend/app.py)\n\nThen try again!', 'bot');
+  }
+}
+
+function aiAddBubble(text, role, sources, time){
+  var box = document.getElementById('ai-chat-box');
+  var wrap = document.createElement('div');
+  wrap.className = 'ai-msg-wrap ' + role;
+
+  if(role === 'bot'){
+    var row = document.createElement('div');
+    row.className = 'ai-bot-row';
+    var av = document.createElement('div');
+    av.className = 'ai-avatar';
+    av.textContent = '🌿';
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-bubble';
+    bubble.textContent = text;
+    row.appendChild(av);
+    row.appendChild(bubble);
+    wrap.appendChild(row);
+    if(sources && sources.length > 0){
+      var src = document.createElement('div');
+      src.className = 'ai-src';
+      src.textContent = '📚 ' + sources.join(', ') + (time ? ' · ⏱ ' + time + 's' : '');
+      wrap.appendChild(src);
+    }
+  } else {
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-bubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+  }
+
+  var timeEl = document.createElement('div');
+  timeEl.className = 'ai-msg-time';
+  timeEl.textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  wrap.appendChild(timeEl);
+
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+
+function aiShowTyping(){
+  var id = 'ai-typing-' + (++aiTypingCounter);
+  var box = document.getElementById('ai-chat-box');
+  var wrap = document.createElement('div');
+  wrap.className = 'ai-msg-wrap bot';
+  wrap.id = id;
+  var row = document.createElement('div');
+  row.className = 'ai-bot-row';
+  var av = document.createElement('div');
+  av.className = 'ai-avatar';
+  av.textContent = '🌿';
+  var typing = document.createElement('div');
+  typing.className = 'ai-typing';
+  for(var i=0;i<3;i++){ var d=document.createElement('div'); d.className='ai-dot'; typing.appendChild(d); }
+  row.appendChild(av);
+  row.appendChild(typing);
+  wrap.appendChild(row);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return id;
+}
+
+function aiRemoveTyping(id){
+  var el = document.getElementById(id);
+  if(el) el.remove();
+}
 </script>
 </body>
 </html>
