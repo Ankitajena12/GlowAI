@@ -8,9 +8,19 @@ engine.load()  # loads once when server starts
 def home():
     return render_template("index.html")
 
+@app.route("/health")
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "ok": True,
+        "engine_ready": engine._ready,
+        "sections_loaded": len(getattr(engine, "sections", []))
+    })
+
 @app.route("/ask", methods=["POST"])
+@app.route("/api/ask", methods=["POST"])
 def ask():
-    data     = request.json
+    data     = request.get_json(silent=True) or {}
     question = data.get("question", "").strip()
 
     if not question:
