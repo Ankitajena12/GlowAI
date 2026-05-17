@@ -14,6 +14,9 @@ def health():
     return jsonify({
         "ok": True,
         "engine_ready": engine._ready,
+        "groq_ready": getattr(engine, "_groq_ready", False),
+        "embedding_model": getattr(engine, "embedding_model", None),
+        "groq_model": getattr(engine, "groq_model", None),
         "sections_loaded": len(getattr(engine, "sections", []))
     })
 
@@ -29,9 +32,10 @@ def ask():
     result = engine.ask(question)
 
     return jsonify({
-        "answer":  result["answer"],
-        "sources": result["sources"],
-        "time":    result["time_taken"]
+        "answer":       result["answer"],
+        "sources":      result["sources"],
+        "time":         result["time_taken"],
+        "reddit_posts": result.get("reddit_posts", [])
     })
 
 if __name__ == "__main__":

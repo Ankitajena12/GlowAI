@@ -1,11 +1,83 @@
 import json
+import math
+import os
 import re
 import time
+import urllib.request
+import urllib.parse
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent
 DOCS_DIR = BASE_DIR / "skincare_docs"
 INDEX_FILE = BASE_DIR / "local_kb.json"
+
+if load_dotenv:
+    load_dotenv(BACKEND_DIR / ".env")
+    load_dotenv(BASE_DIR / ".env")
+
+EMBEDDING_MODEL_NAME = os.getenv("GLOWAI_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+GROQ_MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+TOP_K = int(os.getenv("GLOWAI_TOP_K", "4"))
+
+# Reddit subreddits to search
+REDDIT_SUBS = "SkincareAddiction+IndianSkincareAddicts+AsianBeauty+tretinoin"
+REDDIT_HEADERS = {"User-Agent": "GlowAI/1.0 (skincare assistant)"}
+REDDIT_MAX_POSTS = 3      # number of Reddit posts to fetch
+REDDIT_MAX_CHARS = 300    # max characters per post to send to Groq
+
+
+def fetch_reddit(question: str) -> list[dict]:
+    """
+    Fetch top Reddit posts for a skincare question.
+    Uses Reddit's public JSON API — no auth needed.
+    Returns list of {title, text, url, subreddit, score}
+    """
+    try:
+        query = urllib.parse.quote(question)
+        url = (
+            f"https://www.reddit.com/r/{REDDIT_SUBS}/search.json"
+            f"?q={query}&sort=relevance&limit={REDDIT_MAX_POSTS}"
+            f"&restrict_sr=1&type=link"
+        )
+        req = urllib.request.Request(url, headers=REDDIT_HEADERS)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        posts = []
+        for child in data.get("data", {}).get("children", []):
+            post = child.get("data", {})
+            title     = post.get("title", "").strip()
+            selftext  = post.get("selftext", "").strip()
+            permalink = post.get("permalink", "")
+            subreddit = post.get("subreddit", "")
+            score     = post.get("score", 0)
+
+            # Skip deleted/removed/empty posts
+            if not title or selftext in ("", "[removed]", "[deleted]"):
+                text = title  # use title only
+            else:
+                text = selftext[:REDDIT_MAX_CHARS]
+
+            if title:
+                posts.append({
+                    "title":     title,
+                    "text":      text,
+                    "url":       f"https://reddit.com{permalink}",
+                    "subreddit": subreddit,
+                    "score":     score,
+                })
+
+        return posts
+
+    except Exception as exc:
+        print(f"Reddit fetch failed (non-critical): {exc}")
+        return []
 
 STOPWORDS = {
     "a", "about", "all", "am", "an", "and", "are", "as", "at", "be", "best",
@@ -22,6 +94,12 @@ MEDICAL_FLAGS = {
 }
 
 
+def load_environment() -> None:
+    if load_dotenv:
+        load_dotenv(BACKEND_DIR / ".env")
+        load_dotenv(BASE_DIR / ".env")
+
+
 def normalize_text(text: str) -> str:
     return re.sub(r"[^a-z0-9\s]", " ", text.lower())
 
@@ -31,6 +109,14 @@ def tokenize(text: str) -> list[str]:
         token for token in normalize_text(text).split()
         if len(token) > 2 and token not in STOPWORDS
     ]
+
+
+def section_text(section: dict) -> str:
+    return f"{section.get('title', '')}\n{section.get('body', '')}".strip()
+
+
+def display_source(source: str) -> str:
+    return Path(source).stem.replace("_", " ").title()
 
 
 def parse_sections(path: Path) -> list[dict]:
@@ -78,11 +164,39 @@ def parse_sections(path: Path) -> list[dict]:
     return sections
 
 
-def build_local_index() -> list[dict]:
+def get_sentence_transformer():
+    from sentence_transformers import SentenceTransformer
+
+    try:
+        return SentenceTransformer(EMBEDDING_MODEL_NAME)
+    except Exception as exc:
+        print(f"Online model load failed, trying local cache only: {exc}")
+        return SentenceTransformer(EMBEDDING_MODEL_NAME, local_files_only=True)
+
+
+def add_embeddings(sections: list[dict], embedder=None) -> list[dict]:
+    if not sections:
+        return sections
+
+    model = embedder or get_sentence_transformer()
+    embeddings = model.encode(
+        [section_text(section) for section in sections],
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+
+    for section, embedding in zip(sections, embeddings):
+        section["embedding"] = [float(value) for value in embedding]
+
+    return sections
+
+
+def build_local_index(embedder=None) -> list[dict]:
     sections = []
     for path in sorted(DOCS_DIR.glob("*.txt")):
         sections.extend(parse_sections(path))
 
+    add_embeddings(sections, embedder=embedder)
     INDEX_FILE.write_text(
         json.dumps(sections, indent=2, ensure_ascii=True),
         encoding="utf-8",
@@ -90,190 +204,238 @@ def build_local_index() -> list[dict]:
     return sections
 
 
+def cosine_similarity(left: list[float], right: list[float]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 0.0
+
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = math.sqrt(sum(a * a for a in left))
+    right_norm = math.sqrt(sum(b * b for b in right))
+    if left_norm == 0 or right_norm == 0:
+        return 0.0
+    return dot / (left_norm * right_norm)
+
+
 class GlowAIEngine:
     def __init__(self):
         self.sections = []
+        self.embedder = None
+        self.groq_client = None
         self._ready = False
+        self._groq_ready = False
+        self.embedding_model = EMBEDDING_MODEL_NAME
+        self.groq_model = GROQ_MODEL_NAME
 
     def load(self):
         try:
+            load_environment()
+            self.embedder = get_sentence_transformer()
+
             if INDEX_FILE.exists():
                 self.sections = json.loads(INDEX_FILE.read_text(encoding="utf-8"))
+                if self.sections and not self.sections[0].get("embedding"):
+                    add_embeddings(self.sections, embedder=self.embedder)
+                    INDEX_FILE.write_text(
+                        json.dumps(self.sections, indent=2, ensure_ascii=True),
+                        encoding="utf-8",
+                    )
             else:
-                self.sections = build_local_index()
+                self.sections = build_local_index(embedder=self.embedder)
+
+            groq_api_key = os.getenv("GROQ_API_KEY")
+            if groq_api_key:
+                from groq import Groq
+
+                self.groq_client = Groq(api_key=groq_api_key)
+                self._groq_ready = True
+            else:
+                self.groq_client = None
+                self._groq_ready = False
+                print("GROQ_API_KEY is not set. Retrieval will work, but Groq answers are disabled.")
 
             self._ready = bool(self.sections)
-            print(f"GlowAI ready with {len(self.sections)} knowledge sections.")
+            print(
+                "GlowAI ready with "
+                f"{len(self.sections)} embedded sections using {self.embedding_model}."
+            )
             return self._ready
         except Exception as exc:
             print(f"Error loading engine: {exc}")
             self.sections = []
+            self.embedder = None
+            self.groq_client = None
             self._ready = False
+            self._groq_ready = False
             return False
 
-    def _score_section(self, question: str, question_tokens: list[str], section: dict) -> float:
-        if not question_tokens:
-            return 0.0
+    def _retrieve(self, question: str) -> list[dict]:
+        question_embedding = self.embedder.encode(
+            question,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        question_vector = [float(value) for value in question_embedding]
 
-        score = 0.0
-        title_key = section.get("title_key", "")
-        body = section.get("body", "")
-        body_lower = body.lower()
-        token_set = set(section.get("tokens", []))
+        scored = []
+        question_tokens = set(tokenize(question))
+        for section in self.sections:
+            score = cosine_similarity(question_vector, section.get("embedding", []))
+            token_overlap = question_tokens.intersection(section.get("tokens", []))
+            if token_overlap:
+                score += min(len(token_overlap), 4) * 0.03
+            scored.append((score, section))
 
-        for token in question_tokens:
-            if token in title_key:
-                score += 5
-            if token in token_set:
-                score += 2
-            if token in body_lower:
-                score += 1
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [
+            {**section, "score": round(score, 4)}
+            for score, section in scored[:TOP_K]
+            if score > 0.15
+        ]
 
-        normalized_question = normalize_text(question)
-        if title_key and title_key in normalized_question:
-            score += 8
+    def _fallback_answer(self, question: str, matches: list[dict], reason: str = "") -> str:
+        if not matches:
+            return (
+                "I could not find a strong match in the current GlowAI knowledge base. "
+                "Try asking about skin type, acne, dark spots, sunscreen, retinol, pores, "
+                "or a morning/evening routine."
+            )
 
-        question_has_routine = any(term in normalized_question for term in ("routine", "morning", "night", "evening"))
-        if question_has_routine and "routine" in body_lower:
-            score += 4
-
-        question_has_mix = any(term in normalized_question for term in ("mix", "combine", "layer", "compatible"))
-        if question_has_mix and ("compatible with" in body_lower or "avoid mixing" in body_lower or "do not mix" in body_lower):
-            score += 4
-
-        question_has_start = any(term in normalized_question for term in ("start", "begin", "introduce"))
-        if question_has_start and ("how to start" in body_lower or "frequency" in body_lower):
-            score += 4
-
-        return score
-
-    def _line_score(self, block: str, question_tokens: list[str], question: str) -> float:
-        block_lower = block.lower()
-        score = 0.0
-
-        for token in question_tokens:
-            if token in block_lower:
-                score += 2
-
-        for prefix in (
-            "benefits:", "best for:", "use time:", "compatible with:",
-            "avoid mixing with:", "do not use with:", "how to start:",
-            "frequency:", "routine for", "morning routine:", "evening routine:",
-            "anti-aging morning routine:", "anti-aging evening routine:",
-            "spot treatments:", "what not to do:"
-        ):
-            if block_lower.startswith(prefix):
-                score += 3
-
-        if any(term in question.lower() for term in ("routine", "steps")) and re.match(r"^\d+\.", block.strip()):
-            score += 4
-
-        return score
-
-    def _extract_blocks(self, section: dict, question_tokens: list[str], question: str) -> list[str]:
-        lines = [line.strip() for line in section["body"].splitlines() if line.strip()]
-        blocks = []
-        i = 0
-
-        while i < len(lines):
-            line = lines[i]
-            block_lines = [line]
-
-            if line.endswith(":"):
-                j = i + 1
-                while j < len(lines):
-                    next_line = lines[j]
-                    if re.match(r"^(\d+\.|-)", next_line):
-                        block_lines.append(next_line)
-                        j += 1
-                    else:
-                        break
-                i = j
-            else:
-                i += 1
-
-            block = "\n".join(block_lines)
-            score = self._line_score(block, question_tokens, question)
-            blocks.append((score, block))
-
-        ranked = [block for score, block in sorted(blocks, key=lambda item: item[0], reverse=True) if score > 0]
-        if ranked:
-            return ranked[:4]
-        return lines[:3]
-
-    def _build_answer(self, question: str, matches: list[dict]) -> str:
-        top_match = matches[0]
-        question_tokens = tokenize(question)
-        lead = f"Here is the best guidance I found for {top_match['title'].lower()}:"
+        lead = "I found relevant skincare guidance from the GlowAI knowledge base."
+        if reason:
+            lead += f" {reason}"
 
         points = []
-        seen = set()
-
         for match in matches[:2]:
-            for block in self._extract_blocks(match, question_tokens, question):
-                clean_block = block.strip()
-                if clean_block and clean_block not in seen:
-                    seen.add(clean_block)
-                    points.append(clean_block)
-                if len(points) >= 4:
-                    break
-            if len(points) >= 4:
-                break
-
-        formatted_points = []
-        for point in points:
-            if "\n" in point:
-                first, *rest = point.splitlines()
-                formatted_points.append(f"- {first}")
-                for subpoint in rest[:4]:
-                    formatted_points.append(f"  {subpoint}")
-            else:
-                formatted_points.append(f"- {point}")
+            body_lines = [line.strip() for line in match["body"].splitlines() if line.strip()]
+            for line in body_lines[:3]:
+                points.append(f"- {line}")
 
         closing = ""
         if any(flag in normalize_text(question).split() for flag in MEDICAL_FLAGS):
             closing = "\n\nPlease consider a dermatologist for severe, persistent, painful, or pregnancy-related skin concerns."
 
-        return lead + "\n" + "\n".join(formatted_points[:8]) + closing
+        return lead + "\n" + "\n".join(points[:6]) + closing
+
+    def _answer_with_groq(self, question: str, matches: list[dict], reddit_posts: list[dict] = None) -> str:
+        # Knowledge base context
+        context_blocks = []
+        for index, match in enumerate(matches, start=1):
+            context_blocks.append(
+                f"[{index}] Title: {match['title']}\n"
+                f"Source: {match['source']}\n"
+                f"Content:\n{match['body']}"
+            )
+
+        # Reddit context
+        reddit_block = ""
+        if reddit_posts:
+            reddit_lines = []
+            for post in reddit_posts:
+                reddit_lines.append(
+                    f"• r/{post['subreddit']} ({post['score']} upvotes): "
+                    f"\"{post['title']}\" — {post['text']}"
+                )
+            reddit_block = (
+                "\n\nReal user reviews and discussions from Reddit:\n"
+                + "\n".join(reddit_lines)
+            )
+
+        medical_note = ""
+        if any(flag in normalize_text(question).split() for flag in MEDICAL_FLAGS):
+            medical_note = (
+                " At the end, gently recommend seeing a dermatologist since this sounds "
+                "like it needs professional attention."
+            )
+
+        response = self.groq_client.chat.completions.create(
+            model=self.groq_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are GlowAI — a knowledgeable, warm, and opinionated skincare best friend. "
+                        "You speak like a real person who genuinely cares, not like a medical textbook. "
+                        "You give specific, confident advice — actual product names, exact percentages, "
+                        "clear steps — not vague generalities. "
+                        "You are deeply familiar with Indian and South Asian skin — you know Indian brands "
+                        "like Minimalist, Plum, Dot & Key, Dr. Sheth's, the intense UV in India, common "
+                        "concerns like PIH and melasma on darker skin tones, and budget constraints. "
+                        "Your tone is warm, direct and encouraging — like texting a friend who happens "
+                        "to be a skincare expert. Use casual language, occasional emphasis, and don't "
+                        "be afraid to say things like 'honestly', 'trust me', 'this is the one thing I swear by'. "
+                        "Give real opinions — if something is overhyped say so, if it's a game changer say that too. "
+                        "When Reddit data is provided, mention what real users are saying — "
+                        "quote or paraphrase interesting community opinions naturally in your answer, "
+                        "like 'people on r/SkincareAddiction swear by this' or 'the Indian skincare community loves X'. "
+                        "Always answer using the provided knowledge base first, then enrich with Reddit insights. "
+                        "If context is not enough, say so honestly instead of making things up."
+                        + medical_note
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Knowledge base context:\n\n"
+                        + "\n\n---\n\n".join(context_blocks)
+                        + reddit_block
+                        + f"\n\nMy question: {question}"
+                    ),
+                },
+            ],
+            temperature=0.7,
+            max_tokens=700,
+        )
+        return response.choices[0].message.content.strip()
 
     def ask(self, question: str) -> dict:
-        if not self._ready:
+        if not self._ready or not self.embedder:
             return {
-                "answer": "GlowAI could not load its local knowledge base.",
+                "answer": "GlowAI could not load its SentenceTransformer knowledge base.",
                 "sources": [],
                 "time_taken": 0,
             }
 
         start = time.time()
-        question_tokens = tokenize(question)
-        scored = []
 
-        for section in self.sections:
-            score = self._score_section(question, question_tokens, section)
-            if score > 0:
-                scored.append((score, section))
+        # Retrieve from knowledge base + fetch Reddit in parallel
+        matches = self._retrieve(question)
+        reddit_posts = fetch_reddit(question)
 
-        scored.sort(key=lambda item: item[0], reverse=True)
+        sources = list(dict.fromkeys(display_source(section["source"]) for section in matches))
 
-        if not scored:
+        # Add Reddit sources
+        if reddit_posts:
+            for post in reddit_posts:
+                reddit_src = f"r/{post['subreddit']}"
+                if reddit_src not in sources:
+                    sources.append(reddit_src)
+
+        if not matches:
             elapsed = round(time.time() - start, 1)
             return {
-                "answer": (
-                    "I do not have a precise match for that in the current GlowAI knowledge base yet. "
-                    "Try asking about a skin type, routine step, ingredient, dark spots, acne, pores, "
-                    "sunscreen, or retinol."
-                ),
+                "answer": self._fallback_answer(question, matches),
                 "sources": [],
                 "time_taken": elapsed,
             }
 
-        matches = [section for _, section in scored[:3]]
-        elapsed = round(time.time() - start, 1)
+        if not self._groq_ready or not self.groq_client:
+            answer = self._fallback_answer(question, matches)
+        else:
+            try:
+                answer = self._answer_with_groq(question, matches, reddit_posts=reddit_posts)
+            except Exception as exc:
+                print(f"Groq request failed: {exc}")
+                answer = self._fallback_answer(question, matches)
 
+        elapsed = round(time.time() - start, 1)
         return {
-            "answer": self._build_answer(question, matches),
-            "sources": list(dict.fromkeys(section["source"] for section in matches)),
-            "time_taken": elapsed,
+            "answer":       answer,
+            "sources":      sources,
+            "time_taken":   elapsed,
+            "reddit_posts": [
+                {"title": p["title"], "url": p["url"], "subreddit": p["subreddit"], "score": p["score"]}
+                for p in reddit_posts
+            ],
         }
 
 

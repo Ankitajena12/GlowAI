@@ -622,7 +622,25 @@
     inset: 0;
     transition: transform 0.6s cubic-bezier(.22,.61,.36,1);
   }
-  .ingredient-card:hover .ingredient-bg { transform: scale(1.08); }
+  .ingredient-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.95) contrast(0.95);
+    transition: transform 0.6s cubic-bezier(.22,.61,.36,1), filter 0.4s;
+  }
+  .ingredient-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(42,31,26,0.06) 0%, rgba(42,31,26,0.28) 48%, rgba(42,31,26,0.86) 100%);
+    pointer-events: none;
+  }
+  .ingredient-card:hover .ingredient-bg,
+  .ingredient-card:hover .ingredient-image { transform: scale(1.08); }
+  .ingredient-card:hover .ingredient-image { filter: saturate(1.05) contrast(1); }
   .ing-1 .ingredient-bg { background: linear-gradient(145deg, #f9ece0 0%, #e8c4a0 100%); }
   .ing-2 .ingredient-bg { background: linear-gradient(145deg, #d4e8d0 0%, #a8c8a0 100%); }
   .ing-3 .ingredient-bg { background: linear-gradient(145deg, #e8d4f0 0%, #c4a8d4 100%); }
@@ -633,19 +651,40 @@
     position: absolute;
     bottom: 0; left: 0; right: 0;
     padding: 28px;
-    background: linear-gradient(to top, rgba(42,31,26,0.8) 0%, transparent 100%);
     transform: translateY(8px);
     transition: transform 0.4s;
+    z-index: 2;
   }
   .ingredient-card:hover .ingredient-content { transform: translateY(0); }
-  .ingredient-emoji { font-size: 48px; margin-bottom: 8px; display: block; }
+  .ingredient-emoji { display: none; }
   .ingredient-name {
     font-family: 'Cormorant Garamond', serif;
     font-size: 22px;
     color: white;
     margin-bottom: 4px;
+    text-shadow: 0 2px 14px rgba(42,31,26,0.45);
   }
-  .ingredient-benefit { font-size: 13px; color: rgba(255,255,255,0.7); }
+  .ingredient-benefit {
+    font-size: 13px;
+    color: rgba(255,255,255,0.78);
+    text-shadow: 0 2px 12px rgba(42,31,26,0.45);
+  }
+
+  @media (max-width: 960px) {
+    .ingredients-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 640px) {
+    .ingredients-grid {
+      grid-template-columns: 1fr;
+      gap: 18px;
+      margin-top: 44px;
+    }
+    .ingredient-card {
+      height: 260px;
+      border-radius: 20px;
+    }
+  }
 
   /* ─── AI CHAT ─── */
   .ai-section {
@@ -925,10 +964,218 @@
   .reveal-delay-3 { transition-delay: 0.3s; }
   .reveal-delay-4 { transition-delay: 0.4s; }
 
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--cream); }
-  ::-webkit-scrollbar-thumb { background: var(--terracotta); border-radius: 3px; }
+  /* ─── EMERGENCY / DERMATOLOGIST SECTION ─── */
+  .emergency-section {
+    padding: 120px 80px;
+    background: var(--warm-white);
+    position: relative;
+    overflow: hidden;
+  }
+  .emergency-section::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(ellipse, rgba(200,119,90,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .emergency-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    margin-bottom: 80px;
+  }
+
+  .sos-warning {
+    background: linear-gradient(135deg, rgba(200,119,90,0.1), rgba(200,119,90,0.05));
+    border: 1px solid rgba(200,119,90,0.25);
+    border-radius: 20px;
+    padding: 28px 32px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .sos-icon-big { font-size: 36px; flex-shrink: 0; }
+  .sos-warning-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    color: var(--terracotta);
+    margin-bottom: 10px;
+  }
+  .sos-warning-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sos-warning-list li {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sos-warning-list li::before {
+    content: '—';
+    color: var(--terracotta);
+    font-size: 12px;
+  }
+
+  .find-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--deep);
+    color: white;
+    padding: 18px 40px;
+    border-radius: 100px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+    margin-top: 24px;
+    width: fit-content;
+  }
+  .find-btn:hover {
+    background: var(--terracotta);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(200,119,90,0.3);
+  }
+  .find-btn-icon { font-size: 18px; }
+
+  /* Hospital cards grid */
+  .derm-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+  .derm-card {
+    background: white;
+    border: 1px solid rgba(200,119,90,0.12);
+    border-radius: 20px;
+    padding: 28px 28px 24px;
+    transition: all 0.3s cubic-bezier(.22,.61,.36,1);
+    position: relative;
+    overflow: hidden;
+  }
+  .derm-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--terracotta);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+    transform-origin: left;
+  }
+  .derm-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(42,31,26,0.1); }
+  .derm-card:hover::after { transform: scaleX(1); }
+
+  .derm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(200,119,90,0.1);
+    color: var(--terracotta);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 100px;
+    margin-bottom: 14px;
+  }
+  .derm-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--deep);
+    margin-bottom: 6px;
+  }
+  .derm-address {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .derm-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .derm-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .derm-action-btn.call {
+    background: var(--deep);
+    color: white;
+  }
+  .derm-action-btn.call:hover { background: var(--terracotta); }
+  .derm-action-btn.site {
+    border: 1px solid rgba(42,31,26,0.15);
+    color: var(--muted);
+  }
+  .derm-action-btn.site:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+  /* Helplines strip */
+  .helplines-strip {
+    background: var(--deep);
+    border-radius: 20px;
+    padding: 32px 40px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    align-items: center;
+  }
+  .helpline-item { text-align: center; }
+  .helpline-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--blush);
+    display: block;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+  .helpline-num:hover { color: var(--terracotta); }
+  .helpline-label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(250,246,240,0.4);
+    margin-top: 6px;
+  }
+  .helpline-divider {
+    width: 1px;
+    height: 48px;
+    background: rgba(250,246,240,0.08);
+    justify-self: center;
+  }
+
+  @media (max-width: 960px) {
+    .emergency-header { grid-template-columns: 1fr; gap: 40px; }
+    .derm-grid { grid-template-columns: 1fr; }
+    .helplines-strip { grid-template-columns: 1fr 1fr; }
+    .helpline-divider { display: none; }
+  }
+  @media (max-width: 640px) {
+    .emergency-section { padding: 80px 24px; }
+    .helplines-strip { padding: 24px; grid-template-columns: 1fr 1fr; gap: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -945,6 +1192,7 @@
     <li><a href="#skin">Skin Types</a></li>
     <li><a href="#routine">Routines</a></li>
     <li><a href="#ingredients">Ingredients</a></li>
+    <li><a href="#emergency" style="color:var(--terracotta)">🆘 Emergency</a></li>
     <li><a href="#chat" class="nav-cta">Try GlowAI</a></li>
   </ul>
 </nav>
@@ -1256,6 +1504,7 @@
   <div class="ingredients-grid">
     <div class="ingredient-card ing-1 reveal reveal-delay-1">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1775989982439-610be22c8c7b?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Hyaluronic acid serum bottle" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">💧</span>
         <div class="ingredient-name">Hyaluronic Acid</div>
@@ -1264,6 +1513,7 @@
     </div>
     <div class="ingredient-card ing-2 reveal reveal-delay-2">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1766940095250-5c7715ab57ea?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Niacinamide serum bottle" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">🌿</span>
         <div class="ingredient-name">Niacinamide</div>
@@ -1272,6 +1522,7 @@
     </div>
     <div class="ingredient-card ing-3 reveal reveal-delay-3">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1765053534710-2409e33e65b4?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Retinol serum bottle" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">⚡</span>
         <div class="ingredient-name">Retinol</div>
@@ -1280,6 +1531,7 @@
     </div>
     <div class="ingredient-card ing-4 reveal reveal-delay-1">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1747303969063-3b90bcb3942e?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Vitamin C serum bottle with citrus slices" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">🍊</span>
         <div class="ingredient-name">Vitamin C</div>
@@ -1288,6 +1540,7 @@
     </div>
     <div class="ingredient-card ing-5 reveal reveal-delay-2">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1751831798147-a8c0b2bd9464?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Barrier repair skincare serum bottle" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">🛡️</span>
         <div class="ingredient-name">Ceramides</div>
@@ -1296,6 +1549,7 @@
     </div>
     <div class="ingredient-card ing-6 reveal reveal-delay-3">
       <div class="ingredient-bg"></div>
+      <img class="ingredient-image" src="https://images.unsplash.com/photo-1766940095250-5c7715ab57ea?auto=format&fit=crop&fm=jpg&q=80&w=900" alt="Exfoliating skincare serum dropper" loading="lazy" onerror="this.remove()">
       <div class="ingredient-content">
         <span class="ingredient-emoji">🧪</span>
         <div class="ingredient-name">AHA / BHA</div>
@@ -1353,6 +1607,122 @@
       </div>
     </div>
   </div>
+</section>
+
+<!-- EMERGENCY / DERMATOLOGIST FINDER -->
+<section id="emergency" class="emergency-section">
+
+  <div class="section-tag reveal">
+    <span class="tag-pill">Emergency Help</span>
+  </div>
+  <h2 class="section-title reveal reveal-delay-1">When skin needs<br><em>professional</em> care.</h2>
+
+  <div class="emergency-header" style="margin-top:48px;">
+
+    <!-- Warning card -->
+    <div class="sos-warning reveal reveal-delay-2">
+      <div class="sos-icon-big">⚠️</div>
+      <div>
+        <div class="sos-warning-title">Seek immediate care if you notice</div>
+        <ul class="sos-warning-list">
+          <li>Severe rash spreading rapidly</li>
+          <li>Hives with difficulty breathing</li>
+          <li>Painful blistering or swelling</li>
+          <li>Sudden unexplained skin darkening</li>
+          <li>Deep, cystic, or infected lesions</li>
+          <li>Burns or chemical reactions</li>
+        </ul>
+        <button class="find-btn" onclick="findNearbyDermats()">
+          <span class="find-btn-icon">📍</span>
+          Find Dermatologists Near Me
+        </button>
+      </div>
+    </div>
+
+    <!-- Right side text -->
+    <div class="reveal reveal-delay-3">
+      <p style="font-size:15px;line-height:1.9;color:var(--muted);margin-bottom:24px;">
+        GlowAI is your skincare companion, not a medical provider.
+        For severe, persistent, or painful skin conditions, please consult a qualified dermatologist immediately.
+      </p>
+      <p style="font-size:15px;line-height:1.9;color:var(--muted);margin-bottom:24px;">
+        Below you will find trusted skin specialists in Bhubaneswar and national teleconsult options available across India.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <a href="https://practo.com/dermatologist" target="_blank" class="derm-action-btn call">🩺 Book via Practo</a>
+        <a href="https://1mg.com/consult/dermatologist" target="_blank" class="derm-action-btn site">💊 1mg Teleconsult</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hospital Cards -->
+  <div class="derm-grid">
+    <div class="derm-card reveal reveal-delay-1">
+      <div class="derm-badge">🏥 Government</div>
+      <div class="derm-name">AIIMS Bhubaneswar</div>
+      <div class="derm-address">Sijua, Dumuduma, Bhubaneswar — 751019<br>Dermatology & Venereology OPD</div>
+      <div class="derm-actions">
+        <a href="tel:06742476789" class="derm-action-btn call">📞 0674-247-6789</a>
+        <a href="https://www.aiimsbhubaneswar.nic.in" target="_blank" class="derm-action-btn site">🔗 Website</a>
+      </div>
+    </div>
+
+    <div class="derm-card reveal reveal-delay-2">
+      <div class="derm-badge">🏨 Multi-speciality</div>
+      <div class="derm-name">KIMS Hospital</div>
+      <div class="derm-address">KIIT Road, Patia, Bhubaneswar — 751024<br>Department of Dermatology</div>
+      <div class="derm-actions">
+        <a href="tel:06742725750" class="derm-action-btn call">📞 0674-272-5750</a>
+        <a href="https://kimshealth.org/bhubaneswar" target="_blank" class="derm-action-btn site">🔗 Website</a>
+      </div>
+    </div>
+
+    <div class="derm-card reveal reveal-delay-3">
+      <div class="derm-badge">🏥 Teaching Hospital</div>
+      <div class="derm-name">SUM Hospital</div>
+      <div class="derm-address">K8, Kalinga Nagar, Bhubaneswar — 751003<br>Skin & VD Department</div>
+      <div class="derm-actions">
+        <a href="tel:06742386789" class="derm-action-btn call">📞 0674-238-6789</a>
+        <a href="https://sumhospital.in" target="_blank" class="derm-action-btn site">🔗 Website</a>
+      </div>
+    </div>
+
+    <div class="derm-card reveal reveal-delay-4">
+      <div class="derm-badge">🏨 Private</div>
+      <div class="derm-name">Hi-Tech Medical College</div>
+      <div class="derm-address">Pandara, Bhubaneswar — 751025<br>Dermatology Outpatient</div>
+      <div class="derm-actions">
+        <a href="tel:06742780779" class="derm-action-btn call">📞 0674-278-0779</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Helplines strip -->
+  <div class="helplines-strip reveal">
+    <div class="helpline-item">
+      <a href="tel:104" class="helpline-num">104</a>
+      <div class="helpline-label">Health Helpline</div>
+    </div>
+    <div class="helpline-divider"></div>
+    <div class="helpline-item">
+      <a href="tel:108" class="helpline-num">108</a>
+      <div class="helpline-label">Ambulance</div>
+    </div>
+    <div class="helpline-divider"></div>
+    <div class="helpline-item">
+      <a href="https://iadvl.org" target="_blank" class="helpline-num" style="font-size:22px;">IADVL</a>
+      <div class="helpline-label">Dermatology Assoc.</div>
+    </div>
+    <div class="helpline-divider"></div>
+    <div class="helpline-item">
+      <a href="https://apollo247.com" target="_blank" class="helpline-num" style="font-size:22px;">Apollo</a>
+      <div class="helpline-label">24/7 Online Doctor</div>
+    </div>
+  </div>
+
+  <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:24px;letter-spacing:0.05em;">
+    ⚠ GlowAI is not a licensed medical provider. Always consult a qualified dermatologist for diagnosis and treatment.
+  </p>
 </section>
 
 <!-- TESTIMONIALS -->
@@ -1684,6 +2054,36 @@
   }
 
   bindPromptCards();
+
+  // Find nearby dermatologists via GPS
+  function findNearbyDermats() {
+    const btn = document.querySelector('.find-btn');
+    if (btn) { btn.textContent = '⏳ Getting your location...'; btn.disabled = true; }
+
+    if (!navigator.geolocation) {
+      window.open('https://www.google.com/maps/search/dermatologist+near+me', '_blank');
+      if (btn) { btn.innerHTML = '<span>📍</span> Find Dermatologists Near Me'; btn.disabled = false; }
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        window.open(
+          `https://www.google.com/maps/search/dermatologist/@${lat},${lng},14z`,
+          '_blank'
+        );
+        if (btn) { btn.innerHTML = '<span class="find-btn-icon">📍</span> Find Dermatologists Near Me'; btn.disabled = false; }
+      },
+      function() {
+        // If denied, open generic search
+        window.open('https://www.google.com/maps/search/dermatologist+near+me', '_blank');
+        if (btn) { btn.innerHTML = '<span class="find-btn-icon">📍</span> Find Dermatologists Near Me'; btn.disabled = false; }
+      },
+      { timeout: 8000 }
+    );
+  }
 </script>
 </body>
 </html>
