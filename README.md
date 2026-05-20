@@ -285,14 +285,14 @@ GlowAI is an AI-powered assistant and is **not a substitute for professional med
 ## 👩‍💻 Author
 
 **P .Ankita Jena**
-B.Tech — Artificial Intelligence & Machine Learning
+B.Tech — Artificial Intelligence & Machine Learning|
 Sri Sri University, Cuttack, Odisha
 
 [![GitHub](https://img.shields.io/badge/GitHub-Ankitajena12-181717?style=flat&logo=github)](https://github.com/Ankitajena12)
 
 **Aditya Das**
 B.Tech — Cse
-SOA'A'University, Bhubaneswar, Odisha
+SOA'A'University, Bhubaneswar, Odisha|
 [![GitHub](https://img.shields.io/badge/GitHub-SaVvyCE-181717?style=flat&logo=github)](https://github.com/SaVvyCE)
 
 ---
