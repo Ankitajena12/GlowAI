@@ -368,6 +368,8 @@ class GlowAIEngine:
                         "quote or paraphrase interesting community opinions naturally in your answer, "
                         "like 'people on r/SkincareAddiction swear by this' or 'the Indian skincare community loves X'. "
                         "Always answer using the provided knowledge base first, then enrich with Reddit insights. "
+                        "Keep answers concise — maximum 4-5 sentences or a short bullet list. "
+                        "No long paragraphs. Get straight to the point. "
                         "If context is not enough, say so honestly instead of making things up."
                         + medical_note
                     ),
@@ -383,7 +385,7 @@ class GlowAIEngine:
                 },
             ],
             temperature=0.7,
-            max_tokens=700,
+            max_tokens=350,
         )
         return response.choices[0].message.content.strip()
 

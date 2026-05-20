@@ -1176,6 +1176,47 @@
     .emergency-section { padding: 80px 24px; }
     .helplines-strip { padding: 24px; grid-template-columns: 1fr 1fr; gap: 20px; }
   }
+
+  /* ─── VOICE + IMAGE INPUT ─── */
+  .chat-icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%; border: none;
+    background: rgba(200,119,90,0.1);
+    color: var(--terracotta);
+    font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .chat-icon-btn:hover { background: rgba(200,119,90,0.2); transform: scale(1.05); }
+  .chat-icon-btn.recording {
+    background: #fde8e8; color: #c0392b;
+    animation: recPulse 1s infinite;
+  }
+  @keyframes recPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(192,57,43,0); }
+  }
+  .voice-banner {
+    display: none; align-items: center; gap: 10px;
+    background: rgba(200,119,90,0.08);
+    border: 1px solid rgba(200,119,90,0.2);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: 12px; color: var(--terracotta);
+    margin-bottom: 8px; letter-spacing: 0.05em;
+  }
+  .voice-banner.active { display: flex; }
+  .voice-pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--terracotta);
+    animation: recPulse 1s infinite; flex-shrink: 0;
+  }
+  #voiceInterim { font-style: italic; opacity: 0.7; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .img-preview-wrap { display: none; position: relative; margin-bottom: 8px; width: fit-content; }
+  .img-preview-wrap.has-image { display: block; }
+  .img-preview-wrap img { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(200,119,90,0.2); display: block; }
+  .img-preview-remove { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--deep); color: white; font-size: 11px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .msg-img { max-width: 200px; border-radius: 10px; margin-top: 8px; display: block; }
+  .msg-ai strong { font-weight: 500; color: var(--deep); }
 </style>
 </head>
 <body>
@@ -1592,11 +1633,30 @@
       </div>
       <div class="chat-messages" id="chatMessages">
         <div class="msg msg-ai">
-          Hi! Tell me about your skin and I will create your routine, explain ingredients, or help with a specific concern.
+          Hi! Tell me about your skin and I will create your routine, explain ingredients, or help with a specific concern. You can also 🎙 speak or 📷 upload a skin photo!
         </div>
       </div>
+
+      <!-- Image preview -->
+      <div class="img-preview-wrap" id="imgPreviewWrap">
+        <img id="imgPreview" src="" alt="preview">
+        <button class="img-preview-remove" onclick="removeImage()" title="Remove">×</button>
+      </div>
+
+      <!-- Voice banner -->
+      <div class="voice-banner" id="voiceBanner">
+        <div class="voice-pulse"></div>
+        <span>Listening…</span>
+        <span id="voiceInterim"></span>
+        <button class="chat-icon-btn" onclick="stopVoice()" style="width:24px;height:24px;font-size:12px;margin-left:auto;">✕</button>
+      </div>
+
+      <!-- Input row -->
       <div class="chat-input">
         <input type="text" id="chatInput" placeholder="Ask about your skin..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+        <button class="chat-icon-btn" id="micBtn" onclick="toggleVoice()" title="Voice input">🎙</button>
+        <button class="chat-icon-btn" onclick="document.getElementById('imgFileInput').click()" title="Upload skin photo">📷</button>
+        <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
         <button class="chat-send" type="button" onclick="sendMsg()">→</button>
       </div>
       <div class="chat-helper">
@@ -1859,28 +1919,49 @@
   // Chat
   const chatMessages = document.getElementById('chatMessages');
   const chatInput = document.getElementById('chatInput');
+  let pendingImageB64 = null;
+  let isListening = false;
+  let recognition = null;
 
   function scrollChatToEnd() {
-    if (chatMessages) {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
   function setSelectedCard(element) {
-    document.querySelectorAll('.skin-card, .ingredient-card, .routine-step-card, .step').forEach(node => {
-      node.classList.remove('is-selected');
-    });
-    if (element) {
-      element.classList.add('is-selected');
-    }
+    document.querySelectorAll('.skin-card, .ingredient-card, .routine-step-card, .step').forEach(node => node.classList.remove('is-selected'));
+    if (element) element.classList.add('is-selected');
   }
 
-  function addMessage(text, role, details) {
-    if (!chatMessages) return null;
+  // ── FORMAT MARKDOWN ──
+  function formatMsg(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^(\d+)\.\s(.+)$/gm, '<br><strong>$1.</strong> $2')
+      .replace(/^[-•]\s(.+)$/gm, '<br>• $1')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>')
+      .replace(/^(<br>)+/, '');
+  }
 
+  // ── ADD MESSAGE ──
+  function addMessage(text, role, details, imgSrc) {
+    if (!chatMessages) return null;
     const msg = document.createElement('div');
     msg.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-ai');
-    msg.textContent = text;
+
+    if (role === 'ai') {
+      msg.innerHTML = formatMsg(text);
+    } else {
+      msg.textContent = text;
+    }
+
+    // Show uploaded image in user bubble
+    if (imgSrc && role === 'user') {
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.className = 'msg-img';
+      msg.appendChild(img);
+    }
 
     if (details && role === 'ai') {
       if (details.sources && details.sources.length) {
@@ -1890,24 +1971,23 @@
           const chip = document.createElement('span');
           chip.className = 'source-pill';
           chip.textContent = source;
+          chip.style.cursor = 'pointer';
+          if (source.startsWith('r/')) {
+            chip.title = 'View on Reddit';
+            chip.onclick = () => window.open(
+              `https://www.reddit.com/${source}/search?q=${encodeURIComponent(window.lastQuestion||'')}&sort=relevance`,
+              '_blank'
+            );
+          }
           sources.appendChild(chip);
         });
         msg.appendChild(sources);
       }
-
       if (details.time || (details.sources && details.sources.length)) {
         const meta = document.createElement('div');
         meta.className = 'msg-meta';
-        if (details.time) {
-          const time = document.createElement('span');
-          time.textContent = details.time + 's response';
-          meta.appendChild(time);
-        }
-        if (details.sources && details.sources.length) {
-          const count = document.createElement('span');
-          count.textContent = details.sources.length + ' source' + (details.sources.length === 1 ? '' : 's');
-          meta.appendChild(count);
-        }
+        if (details.time) { const t = document.createElement('span'); t.textContent = details.time + 's response'; meta.appendChild(t); }
+        if (details.sources && details.sources.length) { const c = document.createElement('span'); c.textContent = details.sources.length + ' source' + (details.sources.length === 1 ? '' : 's'); meta.appendChild(c); }
         msg.appendChild(meta);
       }
     }
@@ -1933,23 +2013,32 @@
     if (typing) typing.remove();
   }
 
+  // ── SEND MESSAGE ──
   async function sendMsg(prefilledQuestion) {
     const question = typeof prefilledQuestion === 'string'
       ? prefilledQuestion.trim()
       : (chatInput ? chatInput.value.trim() : '');
 
-    if (!question) return;
+    if (!question && !pendingImageB64) return;
+    window.lastQuestion = question;
+    stopVoice();
 
-    addMessage(question, 'user');
+    const imgToSend = pendingImageB64;
+    const imgPreviewSrc = imgToSend ? document.getElementById('imgPreview').src : null;
+
+    addMessage(question || '📷 Skin photo uploaded — please analyze.', 'user', null, imgPreviewSrc);
     if (chatInput) chatInput.value = '';
-
+    removeImage();
     addTyping();
 
     try {
+      const body = { question: question || 'Please analyze my skin from this photo and suggest a routine.' };
+      if (imgToSend) body.image = imgToSend;
+
       const response = await fetch('/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question })
+        body: JSON.stringify(body)
       });
 
       const payload = await response.json();
@@ -1966,16 +2055,84 @@
       });
     } catch (error) {
       removeTyping();
-      addMessage('GlowAI could not reach the backend right now. Make sure Flask is running and the AI dependencies are available.', 'ai');
+      addMessage('GlowAI could not reach the backend right now. Make sure Flask is running.', 'ai');
     }
   }
 
   function prefillAndSend(question) {
-    if (chatInput) {
-      chatInput.value = question;
-      chatInput.focus();
-    }
+    if (chatInput) { chatInput.value = question; chatInput.focus(); }
     sendMsg(question);
+  }
+
+  // ── IMAGE UPLOAD ──
+  function handleImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      pendingImageB64 = e.target.result;
+      const wrap = document.getElementById('imgPreviewWrap');
+      const prev = document.getElementById('imgPreview');
+      prev.src = e.target.result;
+      wrap.classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
+
+  function removeImage() {
+    pendingImageB64 = null;
+    const wrap = document.getElementById('imgPreviewWrap');
+    const prev = document.getElementById('imgPreview');
+    if (wrap) wrap.classList.remove('has-image');
+    if (prev) prev.src = '';
+  }
+
+  // ── VOICE INPUT ──
+  function toggleVoice() {
+    if (isListening) { stopVoice(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Voice input not supported in this browser. Please use Chrome or Edge.'); return; }
+
+    recognition = new SR();
+    recognition.lang = 'en-IN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      isListening = true;
+      document.getElementById('micBtn').classList.add('recording');
+      document.getElementById('voiceBanner').classList.add('active');
+    };
+
+    recognition.onresult = (e) => {
+      let interim = '', final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      document.getElementById('voiceInterim').textContent = interim;
+      if (final && chatInput) {
+        chatInput.value += (chatInput.value ? ' ' : '') + final;
+        document.getElementById('voiceInterim').textContent = '';
+      }
+    };
+
+    recognition.onerror = () => stopVoice();
+    recognition.onend = () => stopVoice();
+    recognition.start();
+  }
+
+  function stopVoice() {
+    if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+    isListening = false;
+    const btn = document.getElementById('micBtn');
+    const banner = document.getElementById('voiceBanner');
+    if (btn) btn.classList.remove('recording');
+    if (banner) banner.classList.remove('active');
+    const interim = document.getElementById('voiceInterim');
+    if (interim) interim.textContent = '';
   }
 
   function bindPromptCards() {

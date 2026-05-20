@@ -23,6 +23,8 @@ def health():
 @app.route("/ask", methods=["POST"])
 @app.route("/api/ask", methods=["POST"])
 def ask():
+    print("Groq ready:", engine._groq_ready)  # add this line
+    print("Engine ready:", engine._ready)   
     data     = request.get_json(silent=True) or {}
     question = data.get("question", "").strip()
 
