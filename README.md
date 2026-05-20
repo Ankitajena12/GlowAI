@@ -291,8 +291,8 @@ Sri Sri University, Cuttack, Odisha
 [![GitHub](https://img.shields.io/badge/GitHub-Ankitajena12-181717?style=flat&logo=github)](https://github.com/Ankitajena12)
 
 **Aditya Das**
-B.Tech — Cse|
-SOA'A'University, Bhubaneswar, Odisha
+B.Tech — Computer Sciene Enginerring|
+SOA University, Bhubaneswar, Odisha
 [![GitHub](https://img.shields.io/badge/GitHub-SaVvyCE-181717?style=flat&logo=github)](https://github.com/SaVvyCE)
 
 ---
